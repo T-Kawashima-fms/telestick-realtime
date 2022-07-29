@@ -96,9 +96,30 @@ const Peer = window.Peer;
 
       stream.getTracks().forEach((track, index) => {
         console.log(`remoteStream.getTracks()[${index}]:${track.kind}(${track.id})`);
-        // output(Macbook)
       })
-      
+
+      //// 3つのTrackは送れているので、もしこれでうまくいなかったら以下を記述 ////
+      const audioCtx = new(window.AudioContext || window.webkitAudioContext);
+      const dest = audioCtx.createMediaStreamDestination();
+      const merger = audioCtx.createChannelMerger(stream.getTracks().length);
+      stream.getTracks().forEach((track, index) => {
+        if(track.kind == 'audio') {
+          const tmpStream = new MediaStream([track]);
+          const mutedAudio = new Audio();
+          mutedAudio.muted = true;
+          mutedAudio.srcObject = tmpStream;
+          mutedAudio.play();
+          const source = audioCtx.createMediaStreamSource(tmpStream);
+          source.connect(merger, 0, index);
+        }
+      });
+      merger.connect(dest);
+
+      const newAudio = document.createElement('audio');
+      await newAudio.play().catch(console.error);
+      remoteVideo.muted = true;
+      //////// ここまで ////////
+
       // Render remote stream for callee
       remoteVideo.srcObject = stream;
       remoteVideo.playsInline = true;
