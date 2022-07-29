@@ -17,10 +17,38 @@ const Peer = window.Peer;
 
   const localStream = await navigator.mediaDevices
     .getUserMedia({
-      audio: true,
       video: true,
+      audio: false
     })
     .catch(console.error);
+
+  const audioStream = await navigator.mediaDevices
+    .getUserMedia({
+      video: false,
+      audio: true
+    })
+    .then(stream => {
+      // Create stereo audio
+      const audioCtx = new(window.AudioContext || window.webkitAudioContext);
+      const source = audioCtx.createMediaStreamSource(stream);
+      const destinationL = audioCtx.createMediaStreamDestination();
+      const destinationR = audioCtx.createMediaStreamDestination();
+      const splitter = audioCtx.createChannelSplitter(2);
+      source.connect(splitter);
+      splitter.connect(destinationL, 0);
+      splitter.connect(destinationR, 1);
+      localStream.addTrack(destinationL.stream.getTracks()[0]);
+      localStream.addTrack(destinationR.stream.getTracks()[0]);
+    })
+    .catch(console.error);
+  
+  localStream.getTracks().forEach((track, index) => {
+    console.log(`localStream.getTracks()[${index}]:${track.kind}(${track.id})`);
+    // output(Macbook)
+    // localStream.getTracks()[0]:audio(a390254f-aefc-4aec-a85b-681dbcdcf287)
+    // localStream.getTracks()[1]:audio(5a2534c7-3e11-4514-ad99-de6cbfb9bf77)
+    // localStream.getTracks()[2]:video(c64e5119-de50-4409-880a-9969125ea4d9)
+  })
 
   // Render local stream
   localVideo.muted = true;
@@ -65,6 +93,12 @@ const Peer = window.Peer;
     mediaConnection.answer(localStream);
 
     mediaConnection.on('stream', async stream => {
+
+      stream.getTracks().forEach((track, index) => {
+        console.log(`remoteStream.getTracks()[${index}]:${track.kind}(${track.id})`);
+        // output(Macbook)
+      })
+      
       // Render remote stream for callee
       remoteVideo.srcObject = stream;
       remoteVideo.playsInline = true;
