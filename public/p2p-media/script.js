@@ -101,9 +101,10 @@ const Peer = window.Peer;
       //// 3つのTrackは送れているので、もしこれでうまくいなかったら以下を記述 ////
       const audioCtx = new(window.AudioContext || window.webkitAudioContext);
       const dest = audioCtx.createMediaStreamDestination();
-      const merger = audioCtx.createChannelMerger(stream.getTracks().length);
+      const merger = audioCtx.createChannelMerger(2);
       stream.getTracks().forEach((track, index) => {
-        if(track.kind == 'audio') {
+        if (track.kind == 'audio') {
+          console.log(`tmpStream.getTracks()[${index}]:${track.kind}(${track.id})`);
           const tmpStream = new MediaStream([track]);
           const mutedAudio = new Audio();
           mutedAudio.muted = true;
@@ -116,6 +117,7 @@ const Peer = window.Peer;
       merger.connect(dest);
 
       const newAudio = document.createElement('audio');
+      newAudio.srcObject = dest.stream;
       await newAudio.play().catch(console.error);
       remoteVideo.muted = true;
       //////// ここまで ////////
