@@ -118,8 +118,10 @@ const Peer = window.Peer;
 
       // by Murakami
       //受け取った音声からそれぞれ　Media Streamを作成
-      const streamR = new MediaStream(localStream.getTrack()[0]);
-      const streamL = new MediaStream(localStream.getTrack()[1]);
+      const streamR = new MediaStream(stream.getTrack()[0]);
+      const streamL = new MediaStream(stream.getTrack()[1]);
+      console.log('再生 stream.getTrack()[0]: ' + stream.getTrack()[0]);
+      console.log('再生 stream.getTrack()[1]: ' + stream.getTrack()[1]);
       //MediaStreamからweb audio api のSourceを作成(上の図一番左)
       const sourceR = audioCtx.createMediaStreamSource(streamR);
       const sourceL = audioCtx.createMediaStreamSource(streamL);
