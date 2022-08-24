@@ -124,8 +124,8 @@ const Peer = window.Peer;
       newAudioL.autoplay = true;
       const streamR = new MediaStream([stream.getTracks()[0]]);
       const streamL = new MediaStream([stream.getTracks()[1]]);
-      newAudioR.srcObject = streamR;
-      newAudioL.srcObject = streamL;
+      newAudioR.srcObject = streamR.stream;
+      newAudioL.srcObject = streamL.stream;
       console.log('再生 stream.getTracks()[0]: ' + stream.getTracks()[0]);
       console.log('再生 stream.getTracks()[1]: ' + stream.getTracks()[1]);
 
