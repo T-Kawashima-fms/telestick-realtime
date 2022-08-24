@@ -124,6 +124,8 @@ const Peer = window.Peer;
       newAudioL.autoplay = true;
       newAudioR.srcObject = stream.getTrack()[0]
       newAudioL.srcObject = stream.getTrack()[1]
+      console.log('再生 stream.getTrack()[0]: ' + stream.getTrack()[0]);
+      console.log('再生 stream.getTrack()[1]: ' + stream.getTrack()[1]);
 
       // [2]
       //受け取った音声からそれぞれ　Media Streamを作成
