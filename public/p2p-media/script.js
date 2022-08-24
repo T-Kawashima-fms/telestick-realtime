@@ -98,32 +98,49 @@ const Peer = window.Peer;
         console.log(`remoteStream.getTracks()[${index}]:${track.kind}(${track.id})`);
       })
 
-      //// 3つのTrackは送れているので、もしこれでうまくいなかったら以下を記述 ////
-      const audioCtx = new(window.AudioContext || window.webkitAudioContext);
-      const dest = audioCtx.createMediaStreamDestination();
-      const merger = audioCtx.createChannelMerger(2);
-      stream.getTracks().forEach((track, index) => {
-        if (track.kind == 'audio') {
-          console.log(`tmpStream.getTracks()[${index}]:${track.kind}(${track.id})`);
-          const tmpStream = new MediaStream([track]);
-          const mutedAudio = new Audio();
-          mutedAudio.muted = true;
-          mutedAudio.srcObject = tmpStream;
-          mutedAudio.play();
-          const source = audioCtx.createMediaStreamSource(tmpStream);
-          source.connect(merger, 0, index);
-        }
-      });
-      merger.connect(dest);
+      //// ステレオ再生 ////
+      // const audioCtx = new(window.AudioContext || window.webkitAudioContext);
+      // const dest = audioCtx.createMediaStreamDestination();
+      // const merger = audioCtx.createChannelMerger(2);
+      // stream.getTracks().forEach((track, index) => {
+      //   if (track.kind == 'audio') {
+      //     console.log(`tmpStream.getTracks()[${index}]:${track.kind}(${track.id})`);
+      //     const tmpStream = new MediaStream([track]);
+      //     const mutedAudio = new Audio();
+      //     mutedAudio.muted = true;
+      //     mutedAudio.srcObject = tmpStream;
+      //     mutedAudio.play();
+      //     const source = audioCtx.createMediaStreamSource(tmpStream);
+      //     source.connect(merger, 0, index);
+      //   }
+      // });
+      // merger.connect(dest);
 
-      const newAudio = document.createElement('audio');
-      newAudio.srcObject = dest.stream;
-      await newAudio.play().catch(console.error);
-      remoteVideo.muted = true;
-      //////// ここまで ////////
+      // by Murakami
+      //受け取った音声からそれぞれ　Media Streamを作成
+      const streamR = new MediaStream(localStream.getTrack()[0]);
+      const streamL = new MediaStream(localStream.getTrack()[1]);
+      //MediaStreamからweb audio api のSourceを作成(上の図一番左)
+      const sourceR = audioCtx.createMediaStreamSource(streamR);
+      const sourceL = audioCtx.createMediaStreamSource(streamL);
+      //Destinationを作成
+      const destinationR = audioCtx.createMediaStreamDestination();
+      const destinationL = audioCtx.createMediaStreamDestination();
+      //接続
+      sourceR.connect(destinationR);
+      sourceL.connect(destinationR);
+      //audioタグの作成
+      const newAudioR = document.createElement('audio');
+      const newAudioL = document.createElement('audio');
+      //audioタグのstreamを設定
+      newAudioR.autoplay = true;
+      newAudioL.autoplay = true;
+      newAudioR.srcObject = destinationR.stream
+      newAudioL.srcObject = destinationL.stream
 
       // Render remote stream for callee
       remoteVideo.srcObject = stream;
+      remoteVideo.muted = true;
       remoteVideo.playsInline = true;
       await remoteVideo.play().catch(console.error);
     });
