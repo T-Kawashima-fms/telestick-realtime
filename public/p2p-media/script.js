@@ -1,35 +1,37 @@
 const Peer = window.Peer;
 
 (async function main() {
-  const localVideo = document.getElementById('js-local-stream');
-  const localId = document.getElementById('js-local-id');
-  const callTrigger = document.getElementById('js-call-trigger');
-  const closeTrigger = document.getElementById('js-close-trigger');
-  const remoteVideo = document.getElementById('js-remote-stream');
-  const remoteId = document.getElementById('js-remote-id');
-  const meta = document.getElementById('js-meta');
-  const sdkSrc = document.querySelector('script[src*=skyway]');
+  const localVideo = document.getElementById("js-local-stream");
+  const localId = document.getElementById("js-local-id");
+  const callTrigger = document.getElementById("js-call-trigger");
+  const closeTrigger = document.getElementById("js-close-trigger");
+  const remoteVideo = document.getElementById("js-remote-stream");
+  const remoteId = document.getElementById("js-remote-id");
+  const meta = document.getElementById("js-meta");
+  const sdkSrc = document.querySelector("script[src*=skyway]");
+
+  let audioSource = document.getElementById("audioSource");
 
   meta.innerText = `
     UA: ${navigator.userAgent}
-    SDK: ${sdkSrc ? sdkSrc.src : 'unknown'}
+    SDK: ${sdkSrc ? sdkSrc.src : "unknown"}
   `.trim();
 
-  const localStream = await navigator.mediaDevices
+  let localStream = await navigator.mediaDevices
     .getUserMedia({
       video: true,
-      audio: false
+      audio: { deviceId: audioSource },
     })
     .catch(console.error);
 
   const audioStream = await navigator.mediaDevices
     .getUserMedia({
       video: false,
-      audio: true
+      audio: true,
     })
-    .then(stream => {
+    .then((stream) => {
       // Create stereo audio
-      const audioCtx = new(window.AudioContext || window.webkitAudioContext);
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioCtx.createMediaStreamSource(stream);
       const destinationL = audioCtx.createMediaStreamDestination();
       const destinationR = audioCtx.createMediaStreamDestination();
@@ -41,14 +43,14 @@ const Peer = window.Peer;
       localStream.addTrack(destinationR.stream.getTracks()[0]);
     })
     .catch(console.error);
-  
+
   localStream.getTracks().forEach((track, index) => {
     console.log(`localStream.getTracks()[${index}]:${track.kind}(${track.id})`);
     // output(Macbook)
     // localStream.getTracks()[0]:audio(a390254f-aefc-4aec-a85b-681dbcdcf287)
     // localStream.getTracks()[1]:audio(5a2534c7-3e11-4514-ad99-de6cbfb9bf77)
     // localStream.getTracks()[2]:video(c64e5119-de50-4409-880a-9969125ea4d9)
-  })
+  });
 
   // Render local stream
   localVideo.muted = true;
@@ -56,13 +58,43 @@ const Peer = window.Peer;
   localVideo.playsInline = true;
   await localVideo.play().catch(console.error);
 
+  (async () => {
+    await navigator.mediaDevices
+      .enumerateDevices()
+      .then(function (deviceInfos) {
+        for (let i = 0; i !== deviceInfos.length; i++) {
+          let deviceInfo = deviceInfos[i];
+          let option = new Option();
+          option.value = deviceInfo.deviceId;
+          if (deviceInfo.kind === "audioinput") {
+            option.text = deviceInfo.label;
+            audioSource.append(option);
+          }
+          console.log(deviceInfo);
+        }
+      });
+  })();
+  audioSource.addEventListener("change", async (e) => {
+    console.log(e.target.value);
+    localStream = await navigator.mediaDevices
+      .getUserMedia({
+        video: true,
+        audio: { deviceId: e.target.value },
+      })
+      .catch(console.error);
+    localVideo.muted = true;
+    localVideo.srcObject = localStream;
+    localVideo.playsInline = true;
+    await localVideo.play().catch(console.error);
+  });
+
   const peer = (window.peer = new Peer({
     key: window.__SKYWAY_KEY__,
     debug: 3,
   }));
 
   // Register caller handler
-  callTrigger.addEventListener('click', () => {
+  callTrigger.addEventListener("click", () => {
     // Note that you need to ensure the peer has connected to signaling server
     // before using methods of peer instance.
     if (!peer.open) {
@@ -71,32 +103,33 @@ const Peer = window.Peer;
 
     const mediaConnection = peer.call(remoteId.value, localStream);
 
-    mediaConnection.on('stream', async stream => {
+    mediaConnection.on("stream", async (stream) => {
       // Render remote stream for caller
       remoteVideo.srcObject = stream;
       remoteVideo.playsInline = true;
       await remoteVideo.play().catch(console.error);
     });
 
-    mediaConnection.once('close', () => {
-      remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+    mediaConnection.once("close", () => {
+      remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
       remoteVideo.srcObject = null;
     });
 
-    closeTrigger.addEventListener('click', () => mediaConnection.close(true));
+    closeTrigger.addEventListener("click", () => mediaConnection.close(true));
   });
 
-  peer.once('open', id => (localId.textContent = id));
+  peer.once("open", (id) => (localId.textContent = id));
 
   // Register callee handler
-  peer.on('call', mediaConnection => {
+  peer.on("call", (mediaConnection) => {
     mediaConnection.answer(localStream);
 
-    mediaConnection.on('stream', async stream => {
-
+    mediaConnection.on("stream", async (stream) => {
       stream.getTracks().forEach((track, index) => {
-        console.log(`remoteStream.getTracks()[${index}]:${track.kind}(${track.id})`);
-      })
+        console.log(
+          `remoteStream.getTracks()[${index}]:${track.kind}(${track.id})`
+        );
+      });
 
       //// ステレオ再生 ////
       // const audioCtx = new(window.AudioContext || window.webkitAudioContext);
@@ -118,16 +151,16 @@ const Peer = window.Peer;
 
       // by Murakami
       // [1]
-      const newAudioR = document.createElement('audio');
-      const newAudioL = document.createElement('audio');
+      const newAudioR = document.createElement("audio");
+      const newAudioL = document.createElement("audio");
       newAudioR.autoplay = true;
       newAudioL.autoplay = true;
       const streamR = new MediaStream([stream.getTracks()[0]]);
       const streamL = new MediaStream([stream.getTracks()[1]]);
       newAudioR.srcObject = streamR.stream;
       newAudioL.srcObject = streamL.stream;
-      console.log('再生 stream.getTracks()[0]: ' + stream.getTracks()[0]);
-      console.log('再生 stream.getTracks()[1]: ' + stream.getTracks()[1]);
+      console.log("再生 stream.getTracks()[0]: " + stream.getTracks()[0]);
+      console.log("再生 stream.getTracks()[1]: " + stream.getTracks()[1]);
 
       // [2]
       // //受け取った音声からそれぞれ　Media Streamを作成
@@ -160,13 +193,13 @@ const Peer = window.Peer;
       await remoteVideo.play().catch(console.error);
     });
 
-    mediaConnection.once('close', () => {
-      remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+    mediaConnection.once("close", () => {
+      remoteVideo.srcObject.getTracks().forEach((track) => track.stop());
       remoteVideo.srcObject = null;
     });
 
-    closeTrigger.addEventListener('click', () => mediaConnection.close(true));
+    closeTrigger.addEventListener("click", () => mediaConnection.close(true));
   });
 
-  peer.on('error', console.error);
+  peer.on("error", console.error);
 })();
