@@ -20,29 +20,33 @@ const Peer = window.Peer;
   let localStream = await navigator.mediaDevices
     .getUserMedia({
       video: true,
-      audio: { deviceId: audioSource },
+      audio: false,
     })
     .catch(console.error);
 
-  const audioStream = await navigator.mediaDevices
-    .getUserMedia({
-      video: false,
-      audio: true,
-    })
-    .then((stream) => {
-      // Create stereo audio
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const source = audioCtx.createMediaStreamSource(stream);
-      const destinationL = audioCtx.createMediaStreamDestination();
-      const destinationR = audioCtx.createMediaStreamDestination();
-      const splitter = audioCtx.createChannelSplitter(2);
-      source.connect(splitter);
-      splitter.connect(destinationL, 0);
-      splitter.connect(destinationR, 1);
-      localStream.addTrack(destinationL.stream.getTracks()[0]);
-      localStream.addTrack(destinationR.stream.getTracks()[0]);
-    })
-    .catch(console.error);
+  let audioStream;
+  async function setStereoAudio(devId) {
+    audioStream = await navigator.mediaDevices
+      .getUserMedia({
+        video: false,
+        audio: { deviceId: devId },
+      })
+      .then((stream) => {
+        // Create stereo audio
+        const audioCtx = new (window.AudioContext ||
+          window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const destinationL = audioCtx.createMediaStreamDestination();
+        const destinationR = audioCtx.createMediaStreamDestination();
+        const splitter = audioCtx.createChannelSplitter(2);
+        source.connect(splitter);
+        splitter.connect(destinationL, 0);
+        splitter.connect(destinationR, 1);
+        localStream.addTrack(destinationL.stream.getTracks()[0]);
+        localStream.addTrack(destinationR.stream.getTracks()[0]);
+      })
+      .catch(console.error);
+  }
 
   localStream.getTracks().forEach((track, index) => {
     console.log(`localStream.getTracks()[${index}]:${track.kind}(${track.id})`);
@@ -76,15 +80,7 @@ const Peer = window.Peer;
   })();
   audioSource.addEventListener("change", async (e) => {
     console.log(e.target.value);
-    localStream = await navigator.mediaDevices
-      .getUserMedia({
-        video: true,
-        audio: { deviceId: e.target.value },
-      })
-      .catch(console.error);
-    localVideo.muted = true;
-    localVideo.srcObject = localStream;
-    localVideo.playsInline = true;
+    setStereoAudio(e.target.value);
     await localVideo.play().catch(console.error);
   });
 
